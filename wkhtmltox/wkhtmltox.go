@@ -6,8 +6,10 @@ import (
 	"github.com/gogap/config"
 	"github.com/pborman/uuid"
 	"io/ioutil"
+	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -268,11 +270,17 @@ func (p *WKHtmlToX) Convert(fetcherOpts FetcherOptions, convertOpts ConvertOptio
 			ext = ".pdf"
 		}
 	default:
-		err = fmt.Errorf("unkown ConvertOptions type")
+		err = fmt.Errorf("unknown ConvertOptions type")
 		return
 	}
 
 	inputMethod := convertOpts.uri()
+
+
+    if !checkUrl(inputMethod) {
+		err = fmt.Errorf("Inaccessable zone")
+		return
+    }
 
 	var data []byte
 
@@ -299,6 +307,15 @@ func (p *WKHtmlToX) Convert(fetcherOpts FetcherOptions, convertOpts ConvertOptio
 	tmpfileName := filepath.Join(tmpDir, uuid.New()) + ext
 
 	args := convertOpts.toCommandArgs()
+
+	for i, arg := range args {
+	    if (arg == "--footer-html" || arg == "--header-html") {
+            if !checkUrl(args[i+1]) {
+                err = fmt.Errorf("Inaccessable zone")
+                return
+            }
+    	}
+    }
 
 	if p.verbose {
 		args = append(args, []string{inputMethod, tmpfileName}...)
@@ -343,4 +360,16 @@ func (p *WKHtmlToX) fetch(fetcherOpts FetcherOptions) (data []byte, err error) {
 	data, err = fetcher.Fetch([]byte(fetcherOpts.Params))
 
 	return
+}
+
+func checkUrl(uri string) bool {
+	u, err := url.Parse(uri)
+
+	if err != nil {
+		return false
+    }
+
+    match, _ := regexp.MatchString("(?i)^/htmltopdf/(.)+$", u.Path)
+
+	return match
 }
