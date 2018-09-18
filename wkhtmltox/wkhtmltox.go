@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"github.com/gogap/config"
 	"github.com/pborman/uuid"
+	"io"
 	"io/ioutil"
+	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -276,11 +278,10 @@ func (p *WKHtmlToX) Convert(fetcherOpts FetcherOptions, convertOpts ConvertOptio
 
 	inputMethod := convertOpts.uri()
 
-
-    if !checkUrl(inputMethod) {
+  if !checkUrl(inputMethod) {
 		err = fmt.Errorf("Inaccessable zone")
 		return
-    }
+   }
 
 	var data []byte
 
@@ -309,13 +310,20 @@ func (p *WKHtmlToX) Convert(fetcherOpts FetcherOptions, convertOpts ConvertOptio
 	args := convertOpts.toCommandArgs()
 
 	for i, arg := range args {
-	    if (arg == "--footer-html" || arg == "--header-html") {
-            if !checkUrl(args[i+1]) {
-                err = fmt.Errorf("Inaccessable zone")
-                return
-            }
-    	}
-    }
+		if (arg == "--header-html" || arg == "--footer-html") {
+			if !checkUrl(args[i+1]) {
+				err = fmt.Errorf("Inaccessable zone")
+				return
+			}
+			filename := ""
+			filename, err = DownloadFile(args[i+1])
+			if err != nil {
+				err = fmt.Errorf("Couldnt save file")
+				return
+			}
+			args[i+1] = filename
+		}
+  }
 
 	if p.verbose {
 		args = append(args, []string{inputMethod, tmpfileName}...)
@@ -367,9 +375,42 @@ func checkUrl(uri string) bool {
 
 	if err != nil {
 		return false
-    }
+  }
 
-    match, _ := regexp.MatchString("(?i)^/htmltopdf/(.)+$", u.Path)
+  match, _ := regexp.MatchString("(?i)^/htmltopdf/(.)+$", u.Path)
 
 	return match
+}
+
+func DownloadFile(uri string) (filepath_ret string, err error) {
+	u, err := url.Parse(uri)
+
+	if err != nil {
+		return
+    }
+
+  // Get the data
+  resp, err := http.Get(uri)
+  if err != nil {
+    return
+  }
+  defer resp.Body.Close()
+
+	dir := filepath.Dir(u.Path)
+	dir = "doc" + dir;
+	os.MkdirAll(dir, os.ModePerm)
+
+	filepath_ret = "doc" + u.Path;
+
+  // Create the file
+  out, err := os.Create(filepath_ret)
+  if err != nil {
+    return
+  }
+  defer out.Close()
+
+
+  // Write the body to file
+  _, err = io.Copy(out, resp.Body)
+  return filepath_ret, err
 }
