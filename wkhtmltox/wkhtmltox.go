@@ -7,6 +7,7 @@ import (
 	"github.com/pborman/uuid"
 	"io"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"os"
@@ -16,7 +17,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gogap/go-wkhtmltox/wkhtmltox/fetcher"
+	"github.com/b2bcenter/go-wkhtmltox/wkhtmltox/fetcher"
 )
 
 type ToFormat string
@@ -306,9 +307,8 @@ func (p *WKHtmlToX) Convert(fetcherOpts FetcherOptions, convertOpts ConvertOptio
 	}
 
 	tmpfileName := filepath.Join(tmpDir, uuid.New()) + ext
-
 	args := convertOpts.toCommandArgs()
-
+	tmp_dir := RandStringRunes(5);
 	for i, arg := range args {
 		if (arg == "--header-html" || arg == "--footer-html") {
 			if !checkUrl(args[i+1]) {
@@ -316,7 +316,7 @@ func (p *WKHtmlToX) Convert(fetcherOpts FetcherOptions, convertOpts ConvertOptio
 				return
 			}
 			filename := ""
-			filename, err = DownloadFile(args[i+1])
+			filename, err = DownloadFile(args[i+1], tmp_dir)
 			if err != nil {
 				err = fmt.Errorf("Couldnt save file")
 				return
@@ -349,12 +349,10 @@ func (p *WKHtmlToX) Convert(fetcherOpts FetcherOptions, convertOpts ConvertOptio
 	}
 
 	defer os.Remove(tmpfileName)
-
 	var result []byte
 	result, err = ioutil.ReadFile(tmpfileName)
-
 	ret = result
-
+	deleteTmpDir(tmp_dir);
 	return
 }
 
@@ -382,7 +380,7 @@ func checkUrl(uri string) bool {
 	return match
 }
 
-func DownloadFile(uri string) (filepath_ret string, err error) {
+func DownloadFile(uri string, tmp_dir string) (filepath_ret string, err error) {
 	u, err := url.Parse(uri)
 
 	if err != nil {
@@ -394,13 +392,14 @@ func DownloadFile(uri string) (filepath_ret string, err error) {
   if err != nil {
     return
   }
+
   defer resp.Body.Close()
 
 	dir := filepath.Dir(u.Path)
-	dir = "doc" + dir;
+	dir = tmp_dir + dir;
 	os.MkdirAll(dir, os.ModePerm)
 
-	filepath_ret = "doc" + u.Path;
+	filepath_ret = tmp_dir + u.Path;
 
   // Create the file
   out, err := os.Create(filepath_ret)
@@ -413,4 +412,21 @@ func DownloadFile(uri string) (filepath_ret string, err error) {
   // Write the body to file
   _, err = io.Copy(out, resp.Body)
   return filepath_ret, err
+}
+
+var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+func RandStringRunes(n int) string {
+    b := make([]rune, n)
+    for i := range b {
+        b[i] = letterRunes[rand.Intn(len(letterRunes))]
+    }
+    return string(b)
+}
+
+func deleteTmpDir(tmp_dir string) {
+	err := os.RemoveAll(tmp_dir)
+	if err != nil {
+		fmt.Println("[wkhtmltox][ERR]", err)
+	}
 }

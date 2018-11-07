@@ -15,7 +15,7 @@ import (
 
 	"github.com/TV4/graceful"
 	"github.com/gogap/config"
-	"github.com/gogap/go-wkhtmltox/wkhtmltox"
+	"github.com/b2bcenter/go-wkhtmltox/wkhtmltox"
 	"github.com/gorilla/mux"
 	"github.com/phyber/negroni-gzip/gzip"
 	"github.com/rs/cors"

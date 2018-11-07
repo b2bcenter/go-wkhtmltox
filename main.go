@@ -5,13 +5,13 @@ import (
 	"os"
 
 	"github.com/gogap/config"
-	"github.com/gogap/go-wkhtmltox/server"
+	"github.com/b2bcenter/go-wkhtmltox/server"
 	"github.com/urfave/cli"
 )
 
 import (
-	_ "github.com/gogap/go-wkhtmltox/wkhtmltox/fetcher/data"
-	_ "github.com/gogap/go-wkhtmltox/wkhtmltox/fetcher/http"
+	_ "github.com/b2bcenter/go-wkhtmltox/wkhtmltox/fetcher/data"
+	_ "github.com/b2bcenter/go-wkhtmltox/wkhtmltox/fetcher/http"
 )
 
 func main() {
